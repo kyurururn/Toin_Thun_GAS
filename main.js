@@ -1,65 +1,57 @@
-var CHANNEL_ACCESS_TOKEN = "アクセストークン"
-var line_endpoint = 'https://api.line.me/v2/bot/message/reply';
+let CHANNEL_ACCESS_TOKEN = ["{CHANNEL_ACCESS_TOKEN}"];
 
-function send(m) {
-  UrlFetchApp.fetch('https://api.line.me/v2/bot/message/broadcast', {
-    method: 'post',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + CHANNEL_ACCESS_TOKEN,
-    },
-    payload: JSON.stringify({
-      messages: [
-        {
-            type: 'text',
-            text: m
-        }
-      ]
-    }),
-  });
+const setting = () => {
+  let scriptProperties = PropertiesService.getScriptProperties();
+  scriptProperties.setProperty("LATEST_JHS","感染症関係書類をまとめました。(令和5年1月10日)");
+  scriptProperties.setProperty("LATEST_HS","３学期終業式を行いました。（令和5年3月24日）");
+  Logger.log(CHANNEL_ACCESS_TOKEN)
 }
 
-function doPost(e) {
-  var json = JSON.parse(e.postData.contents);
+const show = () => {
+  let scriptProperties = PropertiesService.getScriptProperties();
+  console.log(scriptProperties.getProperty("LATEST_HS"));
+  console.log(scriptProperties.getProperty("LATEST_JHS"));
+}
 
-  var reply_token= json.events[0].replyToken;
-  if (typeof reply_token === 'undefined') {
-    return;
-  }
-
-  return;
-
-  var message = json.events[0].message.text;
-  var reply;
-  if(message.match("桐蔭")){
-    if(message.match("中")){
-      reply = "https://www.toin-h.wakayama-c.ed.jp/toinjhs/";
-    }else{
-      reply = "https://www.toin-h.wakayama-c.ed.jp/";
+const follower = () => {
+  let data = UrlFetchApp.fetch("https://api.line.me/v2/bot/insight/followers?date=20230325",{
+    method:"get",
+    headers:{
+      "Authorization":"Bearer " + CHANNEL_ACCESS_TOKEN[0]
     }
-  }else{
-    return;
-  }
-
-  UrlFetchApp.fetch(line_endpoint, {
-    'headers': {
-      'Content-Type': 'application/json; charset=UTF-8',
-      'Authorization': 'Bearer ' + CHANNEL_ACCESS_TOKEN,
-    },
-    'method': 'post',
-    'payload': JSON.stringify({
-      'replyToken': reply_token,
-      'messages': [{
-        'type': 'text',
-        'text': reply,
-      }],
-    }),
   });
-  return ContentService.createTextOutput(JSON.stringify({'content': 'post ok'})).setMimeType(ContentService.MimeType.JSON);
+  Logger.log(data);
 }
 
 
-function check(){
+const send = (messages) => {
+  for(let i = 0; i < CHANNEL_ACCESS_TOKEN.length; i++){
+    for(let j = 0; j < messages.length; j++){
+      UrlFetchApp.fetch("https://api.line.me/v2/bot/message/broadcast",{
+        method:"post",
+        headers:{
+          "Content-Type":"application/json",
+          "Authorization":"Bearer " + CHANNEL_ACCESS_TOKEN[i],
+        },
+        payload: JSON.stringify({
+          messages: [
+            {
+                type: 'text',
+                text: messages[j]
+            }
+          ]
+        })
+      })
+    }
+  }
+}
+
+const check = () => {
+  let scriptProperties = PropertiesService.getScriptProperties();
+
+  let latest_hs  = scriptProperties.getProperty("LATEST_HS");
+  let latest_jhs = scriptProperties.getProperty("LATEST_JHS");
+ 
   const URL_HS  = "https://www.toin-h.wakayama-c.ed.jp/";
   const URL_JHS = "https://www.toin-h.wakayama-c.ed.jp/toinjhs/";
 
@@ -69,85 +61,74 @@ function check(){
   let html_HS  = response_HS.getContentText("UTF-8").split("\n");
   let html_JHS = response_JHS.getContentText("UTF-8").split("\n");
 
-  let html_HS_TOPIC      = -1;
-  let html_HS_TOPIC_URL  = "";
-  let html_HS_INFO       = -1;
-  let html_JHS_TOPIC     = -1;
-  let html_JHS_TOPIC_URL = "";
-  let html_JHS_INFO      = -1;
-
+  let titles_hs  = [];
+  let titles_jhs = [];
+  let urls_hs    = [];
+  let urls_jhs   = [];
   for(let i = 0; i < html_HS.length; i++){
-    if(html_HS[i].match(/topics_main/) && html_HS_TOPIC < 0){
-      while(!html_HS[i].match(/topics_title/)){
-        i++;
+    if(html_HS[i].match(/topics_title/)){
+      let title = html_HS[i].trim();
+      title = title.replace("<p class='topics_title'>","");
+      title = title.replace("</p>","");
+      
+      if(latest_hs == title){
+        break;
       }
-      html_HS_TOPIC = i;
-      while(!html_HS[i].match(/topics_more/)){
-        i++;
-      }
-      while(!html_HS[i].match(/a href/)){
-        i++;
-      }
-      html_HS_TOPIC_URL = i;
-    }else if(html_HS[i].match(/info_main/) && html_HS_INFO < 0){
-      while(!html_HS[i].match(/info_title/)){
-        i++;
-      }
-      html_HS_INFO = i;
+      
+      titles_hs.push(title);
+    }
+
+    if(html_HS[i].match(/topics_more/)){
+      let url = html_HS[i+1].trim();
+      url = url.replace("<a href='","");
+      url = url.replace("'><img src='./img/more_info.gif' alt='詳細' /></a>","");
+
+      urls_hs.push(URL_HS + url);
     }
   }
 
   for(let i = 0; i < html_JHS.length; i++){
-    if(html_JHS[i].match(/topics_main/) && html_JHS_TOPIC < 0){
-      while(!html_JHS[i].match(/topics_title/)){
-        i++;
+    if(html_JHS[i].match(/topics_title/)){
+      let title = html_JHS[i].trim();
+      title = title.replace("<p class='topics_title'>","");
+      title = title.replace("</p>","");
+      
+      if(latest_jhs == title){
+        break;
       }
-      html_JHS_TOPIC = i;
-      while(!html_JHS[i].match(/topics_more/)){
-        i++;
-      }
-      while(!html_JHS[i].match(/a href/)){
-        i++;
-      }
-      html_JHS_TOPIC_URL = i;
-    }else if(html_JHS[i].match(/info_main/) && html_JHS_INFO < 0){
-      while(!html_JHS[i].match(/info_title/)){
-        i++;
-      }
-      html_JHS_INFO = i;
+      
+      titles_jhs.push(title);
+    }
+
+    if(html_JHS[i].match(/topics_more/)){
+      let url = html_JHS[i+1].trim();
+      url = url.replace("<a href='","");
+      url = url.replace("'><img src='./img/more_info.gif' alt='詳細' /></a>","");
+
+      urls_jhs.push(URL_JHS + url);
     }
   }
 
-  html_HS_TOPIC      = html_HS[html_HS_TOPIC].substring(html_HS[html_HS_TOPIC].indexOf(">")+1,html_HS[html_HS_TOPIC].indexOf("/p")-1);
-  html_JHS_TOPIC     = html_JHS[html_JHS_TOPIC].substring(html_JHS[html_JHS_TOPIC].indexOf(">")+1,html_JHS[html_JHS_TOPIC].indexOf("/p")-1);
+  let messages = [];
 
-  html_HS_INFO       = html_HS[html_HS_INFO].substring(html_HS[html_HS_INFO].indexOf(">")+1,html_HS[html_HS_INFO].indexOf("/p")-1);
-  html_JHS_INFO      = html_JHS[html_JHS_INFO].substring(html_JHS[html_JHS_INFO].indexOf(">")+1,html_JHS[html_JHS_INFO].indexOf("/p")-1);
+  if(titles_hs.length >= 1 && titles_hs.length <= 3){
+    scriptProperties.setProperty("LATEST_HS",titles_hs[0]);
 
-  html_HS_TOPIC_URL  = html_HS[html_HS_TOPIC_URL].substring(html_HS[html_HS_TOPIC_URL].indexOf("href")+6,html_HS[html_HS_TOPIC_URL].indexOf("img")-3);
-  html_JHS_TOPIC_URL = html_JHS[html_JHS_TOPIC_URL].substring(html_JHS[html_JHS_TOPIC_URL].indexOf("href")+6,html_JHS[html_JHS_TOPIC_URL].indexOf("img")-3);
-
-  const spreadSheet = SpreadsheetApp.openById("スプレッドシートのID");
-
-  let before = [spreadSheet.getRange("A1").getValue(),spreadSheet.getRange("B1").getValue(),spreadSheet.getRange("C1").getValue(),spreadSheet.getRange("D1").getValue()];
-
-  let after  = [html_HS_TOPIC,html_HS_INFO,html_JHS_TOPIC,html_JHS_INFO];
-  
-  spreadSheet.getRange("A1").setValue(html_HS_TOPIC);
-  spreadSheet.getRange("B1").setValue(html_HS_INFO);
-  spreadSheet.getRange("C1").setValue(html_JHS_TOPIC);
-  spreadSheet.getRange("D1").setValue(html_JHS_INFO);
-
-  if(before[0] != after[0]){
-    send(after[0] + "\nhttps://www.toin-h.wakayama-c.ed.jp/" + html_HS_TOPIC_URL);
+    for(let i = 0; i < titles_hs.length; i++){
+      messages.push(titles_hs[i] + "\n" + urls_hs[i]);
+    }
   }
-  if(before[1] != after[1]){
-    //send(after[1] + "\nhttps://www.toin-h.wakayama-c.ed.jp/");
+
+  if(titles_jhs.length >= 1 && titles_jhs.length <= 3){
+    scriptProperties.setProperty("LATEST_JHS",titles_jhs[0]);
+
+    for(let i = 0; i < titles_jhs.length; i++){
+      messages.push(titles_jhs[i] + "\n" + urls_jhs[i]);
+    }
   }
-  if(before[2] != after[2]){
-    send(after[2] + "\nhttps://www.toin-h.wakayama-c.ed.jp/toinjhs/" + html_JHS_TOPIC_URL);
-  }
-  if(before[3] != after[3]){
-    //send(after[3] + "\nhttps://www.toin-h.wakayama-c.ed.jp/toinjhs/");
+
+  if(messages.length >= 1){
+    messages.reverse()
+    send(messages)
   }
 }
