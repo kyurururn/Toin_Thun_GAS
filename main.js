@@ -2,8 +2,8 @@ let CHANNEL_ACCESS_TOKEN = ["{CHANNEL_ACCESS_TOKEN}"];
 
 const setting = () => {
   let scriptProperties = PropertiesService.getScriptProperties();
-  scriptProperties.setProperty("LATEST_JHS","感染症関係書類をまとめました。(令和5年1月10日)");
-  scriptProperties.setProperty("LATEST_HS","３学期終業式を行いました。（令和5年3月24日）");
+  scriptProperties.setProperty("LATEST_JHS","{hogehoge}");
+  scriptProperties.setProperty("LATEST_HS","{fugafuga}");
   Logger.log(CHANNEL_ACCESS_TOKEN)
 }
 
@@ -12,17 +12,6 @@ const show = () => {
   console.log(scriptProperties.getProperty("LATEST_HS"));
   console.log(scriptProperties.getProperty("LATEST_JHS"));
 }
-
-const follower = () => {
-  let data = UrlFetchApp.fetch("https://api.line.me/v2/bot/insight/followers?date=20230325",{
-    method:"get",
-    headers:{
-      "Authorization":"Bearer " + CHANNEL_ACCESS_TOKEN[0]
-    }
-  });
-  Logger.log(data);
-}
-
 
 const send = (messages) => {
   for(let i = 0; i < CHANNEL_ACCESS_TOKEN.length; i++){
